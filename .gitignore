@@ -1,0 +1,21 @@
+# user-defined ignores (avoid committing large files)
+
+*.swp
+a.out
+
+## private README etc files
+GPLv3_*
+
+
+## generated object files
+*.o
+
+## generated simulation files by running vasaMac
+*.HoegstaPunktenCalib
+*.macro
+*.traj
+*.eps
+*.x[0-9]*
+*~
+int
+
