@@ -2,6 +2,7 @@
 
 *.swp
 a.out
+save/
 
 ## private README etc files
 GPLv3_*

@@ -60,15 +60,10 @@ using namespace std;
 // own
 #include "general.h"
 
-#include "Statistics.h"
-#include "RandomUtils.h" // contains, e.g.,  myRand()
+//#include "Statistics.h"
+//#include "RandomUtils.h" // contains, e.g.,  myRand()
 #include "InOut.h"
 
-
-// constants
-
-static const int NDATA_MAX=10000;// max. number of data points
-static const int MAXSTR=500;// max. string length
 
 // ################################################################
 // central control variables and parameters
@@ -88,9 +83,9 @@ public:
   // parameters from SimulationInput
 
   double rhomax;
-  double w=-1.4;        // wave speed for all groups and all gradients
-  double mu=0.05;       // friction coefficient (!!wind drag not considered)
-  double sigmarel=0.15; // relative in-class dispersion in free flow 
+  double w;        // wave speed for all groups and all gradients
+  double mu;       // friction coefficient (!!wind drag not considered)
+  double sigmarel; // relative in-class dispersion in free flow 
 
   // general control from SimulationInput
 
@@ -98,14 +93,16 @@ public:
   int dnxout;
 
 
-  SimulationInput(const char projectName[]){
-    char fname[MAXSTR];
+  SimulationInput(string projectName){
+    string fname=projectName+".proj";
     InOut inout;
-    double data[NDATA_MAX];
-    int nData;
-    sprintf(fname,"%s.proj",projectName);
-    inout.get_col(fname,1, nData, data);
-
+    vector<double> data=inout.get_col(fname,1);
+    //inout.get_col(fname.c_str(),1, nData, data);
+    cout<<"data.size()="<<data.size()<<endl;
+    if(int(data.size())<10){
+      cerr<<"error: file "<<fname<<" contains less than 10 data lines"<<endl;
+      exit(-1);
+    }
     tmax=data[0];
     dt=data[1];
     xmax=data[2];
@@ -140,22 +137,19 @@ double kTab[]={0,1,2,3,4,5,6,7,8,9,10};
 
 // #participants in the groups
 
-vector<int>n;
-//int n[]={324,470,853,1154,1351,1751,1665,1897,2256,2136,2899};
+vector<int>nTab;
 
 // median pace (inverse speed, s/m) on level terrain
 // (median because then v_k=1/invv_k)
 
-vector<double>invv;
-//double invv[]={0.15, 0.18, 0.21, 0.24, 0.27,0.30, 0.33, 0.36, 0.39, 0.42, 0.42};
+vector<double>invvTab;
 
 // Median arrival times at starting line
 
-vector<double>tau;
-//double tau[]={0, 14.5, 33.1, 60.4, 84.5,120.6, 166.7, 211.0, 276, 358.5, 400};
+vector<double>tauTab;
 
 // staggered wavestart (if no, all values are zero)
-vector<double>tau_wave;
+vector<double>tau_waveTab;
 
 
 
@@ -194,7 +188,7 @@ double gradient(double x){
 
 double factGradient(double gradient){return 1/(1+max(gradient,0.)/sim.mu);}
 double invvgrad(int k, double gradient){
-  return invv[k]/factGradient(gradient);
+  return invvTab[k]/factGradient(gradient);
 }
 
 // warped time
@@ -237,9 +231,9 @@ double ftilde(double Trel){
 
 
 double Qtotfree(int k, double x, double t){
-  double teff=tau[k]+x*invv[k]*twarpFact(x);
-  return (t>tau_wave[k])
-    ? n[k]/teff * ftilde((t-tau_wave[k])/teff)
+  double teff=tauTab[k]+x*invvTab[k]*twarpFact(x);
+  return (t>tau_waveTab[k])
+    ? nTab[k]/teff * ftilde((t-tau_waveTab[k])/teff)
     :0;
 }
   
@@ -253,7 +247,7 @@ double Qtotfree(double x, double t){
 
 double rhototfree(int k,double x,double t){
   return Qtotfree(k,x,t)
-    *invv[k]/factGradient(gradient(x));
+    *invvTab[k]/factGradient(gradient(x));
 }
   
 double rhototfree(double x, double t){
@@ -294,9 +288,9 @@ double capacHack(double x, double t){
   // here at time 0.4*t
   double vHorizEff=x/tJamFree * twarpFact(x);
   int k=0;
-  bool success=(vHorizEff>1/invv[0]);
+  bool success=(vHorizEff>1/invvTab[0]);
   for(k=1; ((!success)&&(k<nClasses)); k++){
-    success=(vHorizEff>1/invv[k]);
+    success=(vHorizEff>1/invvTab[k]);
   }
   if(k>0){k--;}
   cout<<" (k="<<k<<") ";
@@ -307,17 +301,17 @@ double capacHack(double x, double t){
 // as a function of (continuous) group index k
 
 double V0levelfun(double k){
-  return 1./intpextp(invv.data(), nClasses, k, 0, nClasses);
+  return 1./intpextp(invvTab.data(), nClasses, k, 0, nClasses);
 }
 
 // estimated average group index as f(cumulated #participants)
-// ncum<=n[0]/2: group 0; ncum>=N-n[nClasses-1]/2: group nClasses
+// ncum<=nTab[0]/2: group 0; ncum>=N-nTab[nClasses-1]/2: group nClasses
 
 double k_groupfun(double ncum){
   vector<double>ncumTab;
-  ncumTab.push_back(0.5*n[0]);
+  ncumTab.push_back(0.5*nTab[0]);
   for(int k=1; k<nClasses; k++){
-    ncumTab.push_back(ncumTab[k-1]+0.5*(n[k-1]+n[k]));
+    ncumTab.push_back(ncumTab[k-1]+0.5*(nTab[k-1]+nTab[k]));
   }
   return intpextp(ncumTab.data(), kTab, nClasses, ncum);
 }
@@ -428,17 +422,26 @@ void write_SDD(int it, int ix, ofstream& outfile,
 void write_calibHoechstaPunkten(string str_infile, string str_calibfile){
 
   InOut inout;
-  int nSplitData=inout.getNumberOfDataLines(str_infile.c_str());
+  int nSplitData=inout.getNumberOfDataLines(str_infile);
   
   int nt=ceil(sim.tmax/sim.dt);
   int nIntervals=nt/sim.dntout;
   
-  int classSplitData[nSplitData];
-  double timeSplitData[nSplitData];
-  
-  inout.get_col(str_infile.c_str(),2, nSplitData, classSplitData);
-  inout.get_col(str_infile.c_str(),3, nSplitData, timeSplitData);
+  vector<int> classSplitData=inout.get_intcol(str_infile,2);
+  vector<double> timeSplitData=inout.get_col(str_infile,3);
 
+  if(false){
+    cout<<"nSplitData="<<nSplitData
+        <<" classSplitData.size()="<<classSplitData.size()
+        <<" timeSplitData.size()="<<timeSplitData.size()
+        <<endl;
+    for(int i=0; i<int(timeSplitData.size()); i++){
+      cout<<"i="<<i<<" timeSplitData[i]="<<timeSplitData[i]<<endl;
+    }
+    exit(0);
+  }
+  
+ 
   ofstream outfile(str_calibfile, ios::out);
   outfile<<"#t[s]\tnPassed\tflow[1/h]"<<endl;
 
@@ -479,14 +482,13 @@ int main(int argc, char* argv[]) {
   // Input
   // ##############################
 
-  char   projName[MAXSTR];
-
   if (argc!=2){ // argc=number of cmdline params + 1
     cerr <<"\nCalling syntax: vasaMac projName w/o extension\n";
     cerr <<"Example: vasaMac sim1";
     exit(-1);
   }
-  sprintf(projName,"%s",argv[1]);
+
+  string projName=string(argv[1]);
   sim=SimulationInput(projName);
   if(true){
     cout<<"sim.xmax="<<sim.xmax<<endl
@@ -499,20 +501,15 @@ int main(int argc, char* argv[]) {
   int nt=ceil(sim.tmax/sim.dt); 
   int nxSDD=min(nx-1,int(2980/sim.dx));
   
-  char   outName_macro[MAXSTR+15];
-  char   outName_traj[MAXSTR+15];
-  char   outName_SDD[MAXSTR+15];
-  char   inName_trackParams[MAXSTR+15];
-  char   inName_skiers[MAXSTR+15];
   string str_indataHoechstaPunkten="HoegstaPunkten_splitTimes.csv";
   string str_calibHoechstaPunkten=string(projName)+".HoegstaPunktenCalib";
 
-  
-  sprintf(outName_macro,"%s.%s",projName,"macro");
-  sprintf(outName_traj,"%s.%s",projName,"traj");
-  sprintf(outName_SDD,"%s.x%i",projName,int(sim.dx*nxSDD));
-  sprintf(inName_trackParams,"%s.%s",projName,"trackParams");
-  sprintf(inName_skiers,"%s.%s",projName,"skiers");
+  string outName_macro=projName+".macro";
+  string outName_traj=projName+".traj";
+  string outName_SDD=projName+".x"+to_string(int(sim.dx*nxSDD));
+
+  string inName_trackParams=projName+".trackParams";
+  string inName_skiers=projName+".skiers";
 
   ofstream outfile_macro(outName_macro, ios::out);
   ofstream outfile_traj(outName_traj, ios::out);
@@ -538,15 +535,15 @@ int main(int argc, char* argv[]) {
 // #########################################################
 
   InOut inout;
+
+  /*
   int nTrackData=inout.getNumberOfDataLines(inName_trackParams);
   double data1[nTrackData]; 
   double data2[nTrackData]; 
   double data3[nTrackData]; 
-  inout.get_col(inName_trackParams,1, nTrackData, data1);
-  inout.get_col(inName_trackParams,2, nTrackData, data2);
-  inout.get_col(inName_trackParams,3, nTrackData, data3);
-
-
+  inout.get_col(inName_trackParams.c_str(),1, nTrackData, data1);
+  inout.get_col(inName_trackParams.c_str(),2, nTrackData, data2);
+  inout.get_col(inName_trackParams.c_str(),3, nTrackData, data3);
   // no easily understandable way to transform arrays to vectors
   // -> do it the simple way
   
@@ -555,6 +552,13 @@ int main(int argc, char* argv[]) {
     nlaneTab.push_back(data2[i]);		
     elevTab.push_back(data3[i]);
   }
+  */
+  
+  xTab=inout.get_col(inName_trackParams,1);
+  nlaneTab=inout.get_col(inName_trackParams,2);
+  elevTab=inout.get_col(inName_trackParams,3);
+  int nTrackData=int(xTab.size());
+  
 
   for(int i=0; i<nTrackData; i++){
     cout<<"i="<<i<<" x="<<xTab[i]<<" nlaneTab="<<nlaneTab[i]
@@ -566,31 +570,22 @@ int main(int argc, char* argv[]) {
   // Skier attributes
   // #########################################################
 
-  nClasses=inout.getNumberOfDataLines(inName_skiers);
-  double skidata2[nClasses]; 
-  double skidata3[nClasses]; 
-  double skidata4[nClasses]; 
-  double skidata5[nClasses];
-  
-  inout.get_col(inName_skiers,2, nClasses, skidata2);
-  inout.get_col(inName_skiers,3, nClasses, skidata3);
-  inout.get_col(inName_skiers,4, nClasses, skidata4);
-  inout.get_col(inName_skiers,5, nClasses, skidata5);
+
+  nTab=inout.get_intcol(inName_skiers,2);
+  invvTab=inout.get_col(inName_skiers,3);
+  tauTab=inout.get_col(inName_skiers,4);
+  tau_waveTab=inout.get_col(inName_skiers,5);
+  nClasses=int(nTab.size());
 
   
-  for(int i=0; i<nClasses; i++){
-    n.push_back(skidata2[i]);		
-    invv.push_back(skidata3[i]);
-    tau.push_back(skidata4[i]);
-    tau_wave.push_back(skidata5[i]);
-  }
-  
-
   for(int k=0; k<nClasses; k++){
-    cout<<"k="<<k<<" n[k]="<<n[k]
-      //<<" invv[k]="<<invv[k]
+    cout<<"k="<<k<<" nTab[k]="<<nTab[k]
+	<<" invvTab[k]="<<invvTab[k]
+	<<" tauTab[k]="<<tauTab[k]
+	<<" tau_waveTab[k]="<<tau_waveTab[k]
 	<<endl;
   }
+  //exit(0);
   
   // ###############################################################
 
@@ -603,7 +598,7 @@ int main(int argc, char* argv[]) {
   // #athletes
 
   int ntot=0;
-  for(int k=0; k<nClasses; k++){ntot+=n[k];}
+  for(int k=0; k<nClasses; k++){ntot+=nTab[k];}
 
   
   // test of flows and timewarps

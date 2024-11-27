@@ -25,7 +25,8 @@ BINDIR=~/bin
 #objects/other programs for linking (all own classes to OBJECTS_MAIN)
 
 OBJECTS_MAIN=vasaMac.o
-LIBOBJECTS=general.o InOut.o RandomUtils.o Statistics.o
+LIBOBJECTS=general.o InOut.o
+#LIBOBJECTS=general.o InOut.o RandomUtils.o Statistics.o
 
 
 ###########################################################
