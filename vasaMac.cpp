@@ -1,42 +1,27 @@
 
-/*
-  (dec07)
-  Template fuer main() Programm; Ort:
-  
-  ~/versionedProjects/lib/templates/templateMain.cpp
-  
-  makefile dazu:
-  
-  ~/versionedProjects/lib/templates/makefile
-  
-  brauche nur das templaeMain.cpp und makefile; alles andere wird
-  beim Compilieren dazugeholt!
 
-  Achtung: Bei Klassendeklaration .h File mit Strichpunkt enden!!
-  sonst moeglicherweise Fehlermeldung ohne jede Aussage!
+/* ######################################################################
+Source code for the Vasaloppet congestion simulation at the beginning
 
-  Achtung! Auch ohne .h File muss man bei $OBJECTS immer auch das 
-  File mit der Main-Methode dazunehmen!
-  (sonst "ld: undefined reference to main"
+    Copyright (C) 2024  Martin Treiber
 
-  vectors:
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License Version 3
+    as published by the Free Software Foundation.
 
-  vector<double>xtab;
-  vector<double>xtabWithInit(ninit, 0);
-  vector<double> xtabValInit={val1,val2,val3};
-  vector<vehicle> vehicles;
-  vehicles.push_back(oneVehicle); //out of bounds when vehicles[n]=oneVehicle
-  vehicles[i];
-  vehicles.size(); // size() elements
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-  2 ways of Calling an API function expecting arrays such as intp:
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-  intpextp (&xValsVec[0], &yValsVec[0], xValsVec.size(), x);
-  intpextp (xValsVec.data(), yValsVec.data(), xValsVec.size(), x);
+    Martin Treiber
+   
+    mail@martin-treiber.de
+#######################################################################*/
 
-  Why? The elements of a vector are guaranteed to be contiguous.
-
-*/
 
 
 // c

@@ -8,13 +8,12 @@ based, there is no GUI.
 ## Compiling
 
 Assume that you are on a linux system and gnu g++ is
-implemented, go to ```trunk/src/``` 
-and just enter 
+implemented, just enter 
 
 ```
-make -f makefile_withLibs mic
+make -f makefileLocal vasaMac
 ```
-When using another compiler, change the makefile
+When using another compiler, change the makefile `makefileLocal`
 accordingly.
 
 ## Running the Simulation
