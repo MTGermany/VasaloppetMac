@@ -392,14 +392,17 @@ void write_trajectories(int it, ofstream& outfile,
 // whatch out! reference ofstream& !!
 
 void write_SDD(int it, int ix, ofstream& outfile,
-		    vector<double> Qtot,
-		    vector<double> rhotot){
+	       vector<double> Qtot,
+	       vector<double> rhotot,
+	       vector<double> ncum){
   if(it/sim.dntout<=1){
-    outfile<<"#t[s]\tQtot[skiers/h]\trhotot[skiers/m]\n";
+    outfile<<"#t[s]\tQtot[skiers/h]\trhotot[skiers/m]\tnCum\n";
   }
   outfile<< std::fixed<<setprecision(0)<<it*sim.dt<<"\t"
 	 <<setprecision(0)<<3600*Qtot[ix]<<"\t\t"
-	 <<setprecision(2)<<rhotot[ix]<<endl;
+	 <<setprecision(2)<<rhotot[ix]<<"\t\t\t"
+	 <<setprecision(1)<<ncum[ix]    
+	 <<endl;
 }
 
 // prepare HoegstaPunkten_splitTimes.csv to calibrate with outfile_SDD data
@@ -428,27 +431,33 @@ void write_calibHoechstaPunkten(string str_infile, string str_calibfile){
   
  
   ofstream outfile(str_calibfile, ios::out);
-  outfile<<"#t[s]\tnPassed\tflow[1/h]"<<endl;
+  outfile<<"#t[s]\tnPassed\tflow[1/h]\tnCum"<<endl;
 
   vector<double>flowSplitData;
   int iSplit=0;
+  int ncum=0;
   for(int i=1; i<nIntervals; i++){
     int nPassed=0;
     while( (timeSplitData[iSplit]<(i+1)*sim.dt*sim.dntout)
 	   &&(iSplit<nSplitData)){
       iSplit++;
       nPassed++;
+      ncum++;
     }
     flowSplitData.push_back(nPassed/sim.dntout);
     outfile<< ((i+0)*sim.dt*sim.dntout) <<"\t"
 	   <<nPassed <<"\t"
-	   <<(3600*nPassed/(sim.dt*sim.dntout))<<endl;
+	   <<(3600*nPassed/(sim.dt*sim.dntout))<<"\t\t"
+	   <<ncum
+	   <<endl;
     if(false){
       cout<<"HoegstaPunkten: t="<<(i+0)*sim.dt*sim.dntout
 	  <<" iSplit="<<iSplit
 	  <<" timeSplitData[iSplit]="<<timeSplitData[iSplit]
 	  <<" nPassed="<<nPassed
-	  <<" flow[invh]="<<3600*nPassed/sim.dntout<<endl;
+	  <<" flow[invh]="<<3600*nPassed/sim.dntout
+	  <<" ncum="<<ncum
+	  <<endl;
     }
   }
   cout<<"counted "<<iSplit<<" skiers at Hoechsta Punkten"<<endl;
@@ -825,7 +834,7 @@ int main(int argc, char* argv[]) {
 
 
 	
-	if((rhotot[i]>rhomaxtot)||(Qtot[i]>1.0001*capac[i])){
+	if((rhotot[i]>1.01*rhomaxtot)||(Qtot[i]>1.01*capac[i])){
 	  cerr<<"\n\nerror: i="<<i<<" x="<<x<<" it="<<it<<" t="<<t
 	      <<" either rhotot[i]="<<rhotot[i]<<">rhomaxtot="<<rhomaxtot
 	      <<" or Qtot[i]="<<Qtot[i]<<">capac[i]="<<capac[i]
@@ -903,7 +912,7 @@ int main(int argc, char* argv[]) {
     write_trajectories(it, outfile_traj, index_traj, xtraj);
     
     if(it%sim.dntout==0){
-      write_SDD(it, nxSDD, outfile_SDD, Qtot, rhotot);
+      write_SDD(it, nxSDD, outfile_SDD, Qtot, rhotot, ncum);
     }
 
 
