@@ -400,14 +400,33 @@ void write_SDD(int it, int ix, ofstream& outfile,
   }
   outfile<< std::fixed<<setprecision(0)<<it*sim.dt<<"\t"
 	 <<setprecision(0)<<3600*Qtot[ix]<<"\t\t"
-	 <<setprecision(2)<<rhotot[ix]<<"\t\t\t"
+	 <<setprecision(2)<<rhotot[ix]<<"\t\t"
 	 <<setprecision(1)<<ncum[ix]    
 	 <<endl;
 }
 
-// prepare HoegstaPunkten_splitTimes.csv to calibrate with outfile_SDD data
+// S(beta)=SSE(Qtot(x=2980m))=SSE(Qtot at cell nxSDD)
+// =SSE(Qtot_hoechstaP,Qtotdata)
+double SSE(vector<double>Qtot_sim, vector<double>Qtot_data){
+  double sum=0;
+  for(int it=0; it<int(Qtot_sim.size()); it++){
+    sum += SQR(Qtot_sim[it]-Qtot_data[it]);
+    cout<<"it="<<it<<" t="<<it*sim.dt*sim.dntout
+	<<" 3600*Qtot_sim[it]="<<3600*Qtot_sim[it]
+	<<" 3600*Qtot_data[it]="<<3600*Qtot_data[it]<<endl;
+  }
+  return sum;
+}
+  
 
-void write_calibHoechstaPunkten(string str_infile, string str_calibfile){
+// transform the data of str_infile=HoegstaPunkten_splitTimes.csv (e.g.)
+// in a form for calibrating the model by creating macrodata
+// (vector Qtotdata) for dtAggr=sim.dntout*sim.dt time intervals.
+// also write Qtotdata and other output (nPassed, ncum)
+// in file named str_calibfile
+
+vector<double> get_write_Qtotdata(string str_infile,
+				  string str_calibfile){
 
   InOut inout;
   int nSplitData=inout.getNumberOfDataLines(str_infile);
@@ -434,6 +453,7 @@ void write_calibHoechstaPunkten(string str_infile, string str_calibfile){
   outfile<<"#t[s]\tnPassed\tflow[1/h]\tnCum"<<endl;
 
   vector<double>flowSplitData;
+  flowSplitData.push_back(0); // since intervals start at 1
   int iSplit=0;
   int ncum=0;
   for(int i=1; i<nIntervals; i++){
@@ -444,7 +464,7 @@ void write_calibHoechstaPunkten(string str_infile, string str_calibfile){
       nPassed++;
       ncum++;
     }
-    flowSplitData.push_back(nPassed/sim.dntout);
+    flowSplitData.push_back(nPassed/(sim.dt*sim.dntout));
     outfile<< ((i+0)*sim.dt*sim.dntout) <<"\t"
 	   <<nPassed <<"\t"
 	   <<(3600*nPassed/(sim.dt*sim.dntout))<<"\t\t"
@@ -461,6 +481,7 @@ void write_calibHoechstaPunkten(string str_infile, string str_calibfile){
     }
   }
   cout<<"counted "<<iSplit<<" skiers at Hoechsta Punkten"<<endl;
+  return flowSplitData;
 }
 
   
@@ -476,12 +497,15 @@ int main(int argc, char* argv[]) {
   // Input
   // ##############################
 
-  if (argc!=2){ // argc=number of cmdline params + 1
-    cerr <<"\nCalling syntax: vasaMac projName w/o extension\n";
+  if ((argc<2) || (argc>3)){ // argc=number of cmdline params + 1
+    cerr <<"\nCalling syntax: vasaMac projName w/o extension [onlyCalib]\n";
     cerr <<"Example: vasaMac sim1";
+    cerr <<"Example2: vasaMac sim1 onlyCalib => only .SSE file written";
     exit(-1);
   }
 
+  bool onlySSE=(argc==3);
+  
   string projName=string(argv[1]);
   sim=SimulationInput(projName);
   if(true){
@@ -501,6 +525,7 @@ int main(int argc, char* argv[]) {
   string outName_macro=projName+".macro";
   string outName_traj=projName+".traj";
   string outName_SDD=projName+".x"+to_string(int(sim.dx*nxSDD));
+  string str_SSE=projName+".SSE";
 
   string inName_trackParams=projName+".trackParams";
   string inName_skiers=projName+".skiers";
@@ -711,7 +736,10 @@ int main(int argc, char* argv[]) {
   vector<double>ncum(nx,0); // cum #athletes  int_0^x rhotot dx'
   vector<double>k_group(nx,0); // avg starting group with smooth transit.
 
+  // calibration variables (at a given x=2980m=HoechstaPunkten)
   
+  vector<double>Qtot_sim;  // sim flows in sim.dntout*sim.dt time intvervals
+  Qtot_sim.push_back(0); // just start because sim starts at it=1
 
   //#########################################################
   // actual main simulation loop
@@ -728,7 +756,7 @@ int main(int argc, char* argv[]) {
   
   for(int it=1; it<nt; it++){
     double t=it*sim.dt;
-    if(it%10==0){cout<<"it="<<it<<" t="<<t<<endl;}
+    if(it%100==0){cout<<"it="<<it<<" t="<<t<<endl;}
 
 
 
@@ -772,7 +800,7 @@ int main(int argc, char* argv[]) {
       }
     }
     
-    // main update for t>sim.dt*nt_onlyDisp
+    // main update for a given time step (both dispersive and LWR regimes)
 
     bool sequentialUpdate=false; // true: use Qtot[i]; false: use Qtotold[i]
     
@@ -905,14 +933,17 @@ int main(int argc, char* argv[]) {
     // writing output (inside time loop)
 
     if(it%sim.dntout==0){
-      write_timestep(it,outfile_macro,rhotot,Qtot,capac,
-		     V0, ncum,k_group,flag_cong,flag_disp);
+      if(!onlySSE){write_timestep(it,outfile_macro,rhotot,Qtot,capac,
+				  V0, ncum,k_group,flag_cong,flag_disp);}
+      Qtot_sim.push_back(Qtot[nxSDD]);
     }
+
+    if(!onlySSE){
+      write_trajectories(it, outfile_traj, index_traj, xtraj);
     
-    write_trajectories(it, outfile_traj, index_traj, xtraj);
-    
-    if(it%sim.dntout==0){
-      write_SDD(it, nxSDD, outfile_SDD, Qtot, rhotot, ncum);
+      if(it%sim.dntout==0){
+        write_SDD(it, nxSDD, outfile_SDD, Qtot, rhotot, ncum);
+      }
     }
 
 
@@ -921,15 +952,36 @@ int main(int argc, char* argv[]) {
   cout<<"Simulated skiers at x="<<(nxSDD*sim.dx)
       <<" (no dropout): "<<ncum[nxSDD]<<endl;
   
-  write_calibHoechstaPunkten(str_indataHoechstaPunkten,
-			    str_calibHoechstaPunkten);
 
-  cout<<"\nwrote"<<endl
+  // calibration record
+  
+  vector<double>Qtot_data=get_write_Qtotdata(str_indataHoechstaPunkten,
+			    str_calibHoechstaPunkten);
+  //cout<<"Qtot_sim.size()="<<Qtot_sim.size()
+  //    <<" Qtot_data.size()="<<Qtot_data.size()<<endl;
+  if(onlySSE){
+    double sse=SSE(Qtot_sim,Qtot_data);
+    ofstream outfile_SSE(str_SSE, ios_base::app); // append 
+    outfile_SSE<<sim.rhomax<<"\t"<<sim.mu<<"\t"<<sse<<endl;
+    cout<<"#calib:\trhomax\tmu\tSSE(flow)"<<endl
+        <<" calib:\t"<<std::fixed<<setprecision(2)
+        <<sim.rhomax<<"\t"<<sim.mu<<"\t"<<sse<<endl;
+  }
+
+  // statement on written files
+  
+  cout<<"\nwrote"<<endl;
+  if(!onlySSE){
+    cout
       <<outName_macro<<endl
       <<outName_traj<<endl
       <<outName_SDD<<endl
-      <<str_calibHoechstaPunkten
-      <<endl;
+      <<str_calibHoechstaPunkten<<endl;
+  }
+  else{
+    cout <<str_SSE<<"(append mode)"
+	 <<endl;
+  }
   cout<<"\nvasaMac call finished\n\n";
 
  
