@@ -305,7 +305,7 @@ double k_groupfun(double ncum){
 
 // trajectory settings: get trajectories for all athletes in index_traj
 // initialize xtraj with -1: "this athlete not yet crossed start"
-vector<int>index_traj={100,500,1500,2500,4000,6000,8000,10000,13000,16000};
+vector<int>index_traj={100,500,1500,2500,4000,6000,8000,10000,12000,15000};
 vector<double>xtraj(int(index_traj.size()),-1); 
 
 
@@ -962,10 +962,10 @@ int main(int argc, char* argv[]) {
   if(onlySSE){
     double sse=SSE(Qtot_sim,Qtot_data);
     ofstream outfile_SSE(str_SSE, ios_base::app); // append 
-    outfile_SSE<<sim.rhomax<<"\t"<<sim.mu<<"\t"<<sse<<endl;
-    cout<<"#calib:\trhomax\tmu\tSSE(flow)"<<endl
+    outfile_SSE<<sim.rhomax<<"\t"<<sim.w<<"\t"<<sim.mu<<"\t"<<sse<<endl;
+    cout<<"#calib:\trhomax\tw\tmu\tSSE(flow)"<<endl
         <<" calib:\t"<<std::fixed<<setprecision(2)
-        <<sim.rhomax<<"\t"<<sim.mu<<"\t"<<sse<<endl;
+        <<sim.rhomax<<"\t"<<sim.w<<sim.mu<<"\t"<<sse<<endl;
   }
 
   // statement on written files
