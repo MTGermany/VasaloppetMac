@@ -1,0 +1,15 @@
+% Project file for vasaMac projects
+% ====================================================
+% simulation control parameters
+8400	     tmax
+2	     dt     // CFL condition dx/dt>vmax
+4000	     xmax
+20	     dx
+% parameters
+0.8	     rhomax=max density per lane
+-2.5	     w=wave speed
+0.06	     mu=friction coefficient
+0.12	     sigmarel=relative dispersion coefficient
+% general control (optional)
+40           dntout: write out every dntout'th timestep
+1            dnxout: write out every dnxout'th cell

@@ -1,0 +1,10 @@
+#!/bin/bash
+if vasaMac sim2;
+  then echo "sim successful";
+  else echo "sim failed"; exit -1;
+fi
+
+gnuplot sim2.gnu
+#fig2eps sim2.fig
+#echo "produced sim2.eps"
+

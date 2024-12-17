@@ -39,7 +39,9 @@ vasaMac <project>
   * `tmax`: Simulation time
 
  
-* `.trackParam` Specification of the coursev
+* `.trackParam` Specification of the course
+
+* and, for calibration, the common data file `HoegstaPunkten_splitTimes.csv`
 
 ### Model specification
 

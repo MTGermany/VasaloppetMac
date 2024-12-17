@@ -17,6 +17,11 @@ GPLv3_*
 *.traj
 *.eps
 *.x[0-9]*
+*.bak
+log
 *~
 int
-
+*.HoegstaPunktenCalib
+*.macro
+*.traj
+*.x[0-9]*
