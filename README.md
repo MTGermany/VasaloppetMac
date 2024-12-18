@@ -34,8 +34,7 @@ where the projects `sim1` to `sim3` are supplied as a starter
 
 * `.proj`  The top-level input file controlling and specifying the
   simulation project.  The order of the entries is **fixed** (I did not want to bother with xml
-  parsing) and are explained in the comments (second row) of this file. We have the categories
-
+  parsing) and are explained in the comments (second row) of this file. We have the categories:
   * grid specification (total simulation time, update time, length of the simulated section, cell size)
   * the four model parameters maximum density `rhomax` per track, wave velocity `w`, gliding friction coefficient `mu` and a dispersion variation coeficient `sigmarel`. The first two parameters pertain to the LWR model with a triangular FD. The third parameter, the free-flow speed V0, is calculated from the abilities of the athletes and the local uphill gradient using the assumption of constant power and the friction coefficient. `sigmarel` is for the free-flow dispersion phase of the proposed model
   * output specification. Every `dntout` 'th time step and every `dnxout` th cell is written to the output files
